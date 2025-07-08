@@ -1,5 +1,20 @@
+from flask import Flask
+import threading
+import os
 import paho.mqtt.client as mqtt
 
+# -------- Flask giữ app sống trên Render --------
+app = Flask(__name__)
+
+@app.route("/")
+def index():
+    return "MQTT AI app is alive!"
+
+def run_flask():
+    port = int(os.environ.get("PORT", 10000))  # Render sẽ tự gán PORT, không để số cố định
+    app.run(host="0.0.0.0", port=port)
+
+# ---------- MQTT phần dưới y như bạn muốn ----------
 def on_connect(client, userdata, flags, rc):
     print("✅ Đã kết nối MQTT")
     client.subscribe("ph")
@@ -24,7 +39,6 @@ def on_message(client, userdata, msg):
         except:
             print("Lỗi nhận giá trị EC:", payload)
 
-    # Khi đã nhận đủ giá trị ph và ec thì xử lý gợi ý
     if (ph is not None) and (ec is not None):
         goi_y = ""
         if ph < 5.5:
@@ -41,14 +55,22 @@ def on_message(client, userdata, msg):
 
         print(f"📩 Gợi ý gửi ESP32: {goi_y}")
         client.publish("goiy", goi_y)
-        ph = None  # Reset để nhận lần mới
+        ph = None
         ec = None
 
-client = mqtt.Client()
-client.username_pw_set("Hieu12345", "Hieu12345")
-client.tls_set()  # Enable TLS cho cổng 8883
-client.on_connect = on_connect
-client.on_message = on_message
-client.connect("940bb465734c4cb091dcf59c3a066cb6.s1.eu.hivemq.cloud", 8883)
+def run_mqtt():
+    client = mqtt.Client()
+    client.username_pw_set("Hieu12345", "Hieu12345")
+    client.tls_set()
+    client.on_connect = on_connect
+    client.on_message = on_message
+    client.connect("940bb465734c4cb091dcf59c3a066cb6.s1.eu.hivemq.cloud", 8883)
+    client.loop_forever()
 
-client.loop_forever()
+if __name__ == "__main__":
+    # Chạy Flask ở thread nền để Render luôn nhận diện app "alive"
+    t_web = threading.Thread(target=run_flask)
+    t_web.daemon = True
+    t_web.start()
+    # Chạy chính MQTT AI
+    run_mqtt()
