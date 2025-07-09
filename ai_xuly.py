@@ -64,7 +64,7 @@ def run_mqtt():
     client.tls_set()
     client.on_connect = on_connect
     client.on_message = on_message
-    client.connect("43f9541e13ef4c49ab177e4f8263c375.s1.eu.hivemq.cloud", 8883)
+    client.connect("0c64bc40bce34474a94c9709a84d047a.s1.eu.hivemq.cloud", 8883)
     client.loop_forever()
 
 if __name__ == "__main__":
